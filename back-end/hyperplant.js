@@ -4,8 +4,8 @@
   var port = 3701;
       connect = require('connect'),
       serve = require('serve-static'),
-      io = require('socket.io').listen(
-        connect().use(serve("../index.html")).listen(port)),
+      app = connect().use(serve(__dirname + "/../")).listen(port),
+      io = require('socket.io').listen(app),
 
       // grid
       initgrid = function(length, width) {
@@ -23,7 +23,8 @@
         }
         return grid;
       },
-      gridX = 20, gridY = 20,
+      //TODO: fix gridsize <-> display size mapping
+      gridX = 45, gridY = 55,
       grid = initgrid(gridX, gridY),
 
       // player metadata
@@ -45,31 +46,31 @@
           newLocations = [],
           winner = false;
 
-      for(var player in Object.keys(players)) {
+      for(var player in players) {
         // calculate next location
         switch(players[player].direction) {
           case 1 /*left*/:
-            next[x] = players[player].x - 1;
-            next[y] = players[player].y;
+            next.x = players[player].x - 1;
+            next.y = players[player].y;
             break;
           case 2 /*up*/:
-            next[x] = players[player].x;
-            next[y] = players[player].y - 1;
+            next.x = players[player].x;
+            next.y = players[player].y - 1;
             break;
           case 3 /*right*/:
-            next[x] = players[player].x + 1;
-            next[y] = players[player].y;
+            next.x = players[player].x + 1;
+            next.y = players[player].y;
             break;
           case 4 /*down*/:
-            next[x] = players[player].x;
-            next[y] = players[player].y + 1;
+            next.x = players[player].x;
+            next.y = players[player].y + 1;
             break;
         }
 
         // lol
         if(grid[next.x][next.y]) {
           players[player].alive = false;
-          player.emit('crash', { rekt_irl: true });
+          players[player].socket.emit('crash', { rekt_irl: true });
           --alivePlayers;
         }
         else {
@@ -81,37 +82,41 @@
           grid[next.x][next.y] = true;
 
           // track new locations
-          newLocations.push(next.x, next.y);
+          newLocations.push({ x: next.x,
+                              y: next.y });
         }
       }
 
-      //TODO: handle replaying/waitQueue
-      for(var player in Object.keys(players)) {
+      for(var player in players) {
         if(players[player].alive) {
-          if(alivePlayers <= 1)
-            player.emit('win');
+          if(alivePlayers <= 1) {
+            players[player].socket.emit('win');
+
+            // stop the interval to stop the "game loop"
+            // note: this will continue running the current interval
+            clearInterval(interval);
+            //TODO: reset the game, handle waitQueue
+          }
           else
-            //TODO: in client, socket.on('update', ...) should be update(data[1]. data[2])
-            // ie remove need for object
-            player.emit('update', { locationList: newLocations });
+            players[player].socket.emit('update', { newLocations: newLocations });
         }
         else {
           if(alivePlayers <= 1)
-            player.emit('lose');
+            players[player].socket.emit('lose');
         }
-        // stop the interval to stop the "game loop"
-        clearInterval(interval);
       }
-    }, 1500);
+    //TODO: game mode difficulties by changing the update value
+    }, 100);
   };
 
   io.sockets.on('connection', function(socket) {
     ++numPlayers;
     ++alivePlayers;
+    console.log("Joined. Total players: " + numPlayers);
 
     // TODO: do we need playerNumber?
     // track players and seed their loc/dir as they stream in
-    players[socket] = { playerNumber: numPlayers,
+    players[socket.id] = { playerNumber: numPlayers,
                         alive: true,
                         x: (numPlayers % 2 == 0) ?
                               Math.floor(1/4 * gridX) :
@@ -119,48 +124,54 @@
                        // calculate the closest power of 2 greater than the number of players
                         y: Math.floor((1/(Math.pow(Math.ceil(
                               Math.log(MAX_ALLOWED_PLAYERS + 1)/Math.log(2)), 2))) * gridY),
-                        direction: (numPlayers % 2 == 0) ? 3/*right*/: 1/*left*/ };
+                        direction: (numPlayers % 2 == 0) ? 3/*right*/: 1/*left*/,
+                        socket: socket };
 
     // seed the locations as players stream in
-    seedLocations.push({ x: players[socket].x,
-                         y: players[socket].y });
+    seedLocations.push({ x: players[socket.id].x,
+                         y: players[socket.id].y });
 
     // set their initial location as taken
-    grid[players[socket].x][players[socket].y] = true;
+    grid[players[socket.id].x][players[socket.id].y] = true;
 
     socket.emit('join');
 
     // TODO: change the "ready" event to query the players if they want to wait for more players or go
     // wait until an appropriate number of players have joined to initiate game
     if (numPlayers >= MIN_ALLOWED_PLAYERS && numPlayers <= MAX_ALLOWED_PLAYERS) {
-      for(var player in Object.keys(players)) {
-        player.emit('ready');
+      for(var player in players) {
+        console.log("checking if player ready...");
+        players[player].socket.emit('ready');
       }
     }
     // TODO: do something with waitQueue
     // add extra players to a waiting queue and notify them
     if (gameStarted || numPlayers > MAX_ALLOWED_PLAYERS) {
+      console.log("adding player " + players[socket.id].playerNumber + " to wait Queue");
       socket.emit('waitqueue');
       waitQueue.push(socket);
     }
 
     socket.on('playerready', function(data) {
       ++readyPlayers;
+      console.log("Total players ready: " + readyPlayers);
 
       // if everyone is ready, start the game
       if (readyPlayers == numPlayers) {
+        console.log("starting game...");
         gameStarted = true;
-        for(var player in Object.keys(players)) {
-          player.emit('start', { playerNumber: players[player].playerNumber,
+        for(var player in players) {
+          players[player].socket.emit('start',
+                               { playerNumber: players[player].playerNumber,
                                  initialDirection: players[player].direction,
-                                 initialLocation: seedLocations });
+                                 initialLocations: seedLocations });
         }
         startGame();
       }
     });
 
     socket.on('direction', function(data) {
-      players[socket].direction = data.direction;
+      players[socket.id].direction = data.direction;
     });
   });
 })();
