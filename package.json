@@ -1,0 +1,29 @@
+{
+  "name": "tronjs",
+  "version": "5.0.0",
+  "description": "Tron reloaded 5.0 hyperdrive edition",
+  "main": "tron.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pmcgannon22/tronjs.git"
+  },
+  "keywords": [
+    "Tron",
+    "reloaded",
+    "5.0",
+    "hyperdrive",
+    "edition"
+  ],
+  "author": "Tron",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/pmcgannon22/tronjs/issues"
+  },
+  "homepage": "https://github.com/pmcgannon22/tronjs",
+  "dependencies": {
+    "socket.io": "^1.3.5"
+  }
+}
