@@ -1,3 +1,8 @@
+window.onload = function() {
+    var socket = io.connect(window.location.href);
+}
+
+
 var svg = d3.select("#tron").append("svg")
 	.attr("width", 500)
 	.attr("height", 500);
@@ -23,57 +28,66 @@ var MAX_X = 1000;
 var MAX_Y = 1000;
 var stepSize = 50;
 
+var isAlive = false;
+var playerNumber = 0;
+
 $(document).keydown(function(e){
-        //left arrow
-        if (e.keyCode == 37) {
-            cDirection = e.keyCode - 36;
-            stepLocation();
-            return false;
-        }
-        //up arrow
-        if (e.keyCode == 38) {
-            cDirection = e.keyCode - 36;
-            stepLocation();
-            return false;
-        }
-        //right arrow
-        if (e.keyCode == 39) {
-            cDirection = e.keyCode - 36;
-            stepLocation();
-            return false;
-        }
-        //down arrow
-        if (e.keyCode == 40) {
-            cDirection = e.keyCode - 36;
-            stepLocation();
-            return false;
+        if(isAlive == true){
+            //left arrow
+            if (e.keyCode == 37) {
+                cDirection = e.keyCode - 36;
+                socket.emit("direction", {'direction' : cDirection});
+                return false;
+            }
+            //up arrow
+            if (e.keyCode == 38) {
+                cDirection = e.keyCode - 36;
+                socket.emit("direction", {'direction' : cDirection});
+                return false;
+            }
+            //right arrow
+            if (e.keyCode == 39) {
+                cDirection = e.keyCode - 36;
+                socket.emit("direction", {'direction' : cDirection});
+                return false;
+            }
+            //down arrow
+            if (e.keyCode == 40) {
+                cDirection = e.keyCode - 36;
+                socket.emit("direction", {'direction' : cDirection});
+                return false;
+            }
         }
 });
 
-function stepLocation(){
-    var tempPosition = cPosition;
-    switch (cDirection){
-    case 1:
-        tempPosition.x -= stepSize;
-        break;
-    case 2:
-        tempPosition.y += stepSize;
-        break;
-    case 3:
-        tempPosition.x += stepSize;
-        break;
-    case 4:
-        tempPosition.y -= stepSize;
-        break;   
-    }
-    if(tempPosition.x < 0 || tempPosition.y < 0 ||
-       tempPosition.x > MAX_X ||
-       tempPosition.y > MAX_Y)
-        {
-            window.alert ("You died");
-        }
-    else {
-        cPosition = tempPosition;
-        p.push(cPosition);
-    }
+socket.on("crash", function(data) {
+        isAlive = false;
+        window.alert("You Lost");
+    });
+/*
+data =
+{playberNumber : int,
+initialDireciton : int,
+[{'x': xValue, 'y' : yValue}, {'x': xValue, 'y' : yValue}]
 }
+
+*/
+socket.on("start", function(data){
+        isAlive = true;
+        playerNumber = data.playerNumber;
+        cDirection = data.initialDirection;
+        update(data.initialLocation[1], data.initialLocation[2]);
+    });
+
+socket.on("ready", function(data){
+    if(window.confirm("Are you ready to begin?")){
+        socket.emit("playerready", {});
+    }
+    });
+/*
+data = 
+{ locationList : [{'x': xValue, 'y' : yValue}, {'x': xValue, 'y' : yValue}]
+*/
+socket.on("update", function(data){
+        update(data.locationList[1], data.locationList[2]);
+    });
