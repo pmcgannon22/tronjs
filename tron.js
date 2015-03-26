@@ -15,11 +15,11 @@ window.onload = function() {
                     .attr("height", this.height + margin.top + margin.bottom)
                     .append("g")
                     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-                    
+
                     var squareSize = this.size/this.gridSize;
                     var squares = [];
                     var normal = [];
-                    
+
                     //1 for grid pixel size
                     var count = 0;
                     for(var i = 0; i < this.size; i+= (squareSize + 1), count += 1) {
@@ -28,10 +28,10 @@ window.onload = function() {
                     }
                     this.nS = normal.length;
                     console.log(normal);
-                    
+
                     this.x = d3.scale.quantize().domain(normal)
                     .range(squares);
-                    
+
                     this.y = d3.scale.quantize().domain(normal)
                     .range(squares);
                 },
@@ -63,8 +63,8 @@ window.onload = function() {
                             "stroke" : "green",
                             "stroke-width" : "1px"
                             });
-                    
-                    
+
+
                     grid.selectAll("line.verticalGrid").data(this.x.range()).enter()
                     .append("line")
                     .attr(
@@ -83,17 +83,17 @@ window.onload = function() {
                 update: function(player1, player2) {
                     this.players[0].push(player1);
                     this.players[1].push(player2);
-                    
+
                     var squares = this.svg.append("g").attr("class", "grid-squares");
                     var p1 = squares.selectAll("rect.square.player1").data(this.players[0]);
                     var p2 = squares.selectAll("rect.square.player2").data(this.players[1]);
                     var x = this.x,
                     y = this.y,
                     squareSize = (this.size/this.gridSize + 1);
-                    
-                    console.log(x);	    
+
+                    console.log(x);
                     var update_player = function(n, player, color) {
-                        
+
                         player.attr("class", "square");
                         player.enter().append("rect")
                         .attr({
@@ -105,7 +105,7 @@ window.onload = function() {
                                     fill: color
                                     });
                     };
-                    
+
                     update_player(1, p1, "green");
                     update_player(2, p2, "white");
                 },
@@ -113,10 +113,10 @@ window.onload = function() {
                 size: 600,
                 gridSize: 50
             };
-            
+
             Grid.init();
             Grid.draw();
-            
+
             return {
                 update: function(player1, player2) {
                     Grid.update(player1, player2);
@@ -129,7 +129,7 @@ window.onload = function() {
 
 
 var cPosition = {'x' : 150, 'y' : 150};
-//1 - left, 2-up, 3-right, 4-down 
+//1 - left, 2-up, 3-right, 4-down
 var cDirection = 2;
 var MAX_X = 1000;
 var MAX_Y = 1000;
@@ -192,7 +192,7 @@ socket.on("ready", function(data){
         }
     });
 /*
-  data = 
+  data =
   { locationList : [{'x': xValue, 'y' : yValue}, {'x': xValue, 'y' : yValue}]
 */
 socket.on("update", function(data){
@@ -202,4 +202,4 @@ socket.on("update", function(data){
 
 //console.log(Tron.size());
 Tron.update({x: 3, y: 4}, {x: 2, y:2});
-//setTimeout(function() { Tron.update([{x: 3, y: 4}, {x: 4, y: 4}], [{x:10, y:10}]) }, 1000);
+// setTimeout(function() { Tron.update([{x: 3, y: 4}, {x: 4, y: 4}], [{x:10, y:10}]) }, 1000);
